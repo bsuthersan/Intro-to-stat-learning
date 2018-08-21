@@ -1,0 +1,91 @@
+---
+title: "Chapter2_MultivariateRegression"
+output: html_notebook
+---
+
+In this notebook we will look at multiple linear regression on the `Auto` dataset.
+
+```{r}
+library(ISLR)
+library(tidyverse)
+library(knitr)
+```
+
+We begin by creating a scatterplot matrix of all of the different variables.
+
+```{r, echo=FALSE, dpi=600}
+plot(Auto)
+```
+
+The plot above is a little difficult to understand. A second step is to compute the matrix of correlations between each of the variables. Note that we will not include the variable `name` in this correlation, as this is a qualitative variable.
+
+```{r}
+Auto %>%
+  select(-name) %>%
+  cor() %>%
+  kable()
+```
+
+As shown above, there apppears to be quite a few strong correlations between: cylinders, displacement, horsepower, and weight.
+
+The next step is to build the model.
+
+```{r}
+model <- lm(mpg ~ .-name, data = Auto)
+summary(model)
+```
+
+The data shows that the following variables have a statistically significant relationship to the response `mpg`: `year`, `weight`, `origin` and `displacement`. The coefficient for the variable `year` suggests that for every one unit increase in `mpg`, `year` increases by 0.75.
+
+The residual standard error is an indicaton of the difference between the predicted values and those used to fit the model. In this case, it is probably better to use the adjusted R-squred (0.8182), as this is a statitsic which has been adjusted to take into account the number of predictors in the model.
+
+The _F statistic_ is a measure of the fit of the model. Unlike t-tests which can only assess one coefficient at a time, the F-test can assess multiple coefficients simultaneously. The F statistic assess the current model against a model with zero predictors, also known as the 'intercept only model'. The p value provides evidence of whether or not the current model differs from the intercept only model.  In this case, the p value < 2.2e-16 is highly statistically significant, so we can say that the addition of these variables is significant in improving the model. It is important to note, however, that the approach of using an F-statistic to test for any association between the predictors and the response works when _p_ is small, certainly compared to _n_.
+
+The next step is assessing the diagnostic plots.  
+
+```{r}
+plot(model)
+```
+
+There are four plots produced here:
+
+- *Residuals versus fitted*: This plot shows if the residuals have non-linear patterns. For a good fit, we are looking for equally spread residuals around a horizonal line without distinct patterns. This appears to be the case in the plot above. An ideal plot would have a perfectly flat red line.
+- *Normal QQ*: A QQ plot, or quantile-quantile plot, is a probability plot. Here, we are looking for an approximately linear relationship. In this case, there appears to be a normal QQ plot, however, at the top end of the graph, it can be seen that there is a scattering of points which probably require attention.
+- The *scale-location* plot is similar to the residuals versus fitted values plot, but it takes the square root of the standardised residuals. In this case it looks to be normally distributed.
+- The *Cooks Distance* plot is a statistic which tries to identify points that have more influence than other points. There are no hard and fast rules for interpreting Cook's distance, but influential values will be labeled in the plot, and might require further investigation. In this case, it looks like point 14 might have a lot of leverage and should probably be investigated.
+
+###Improving the model: Interaction effects
+
+Let's now take a look at interaction effects on the model. An interaction effect is the simultaneous effect of two or more independent variables on at least one dependent variable in which their joint effect is significantly greater (or significantly less) than the sum of the parts.
+
+We can use interactions effects by multiplying different variables. For example, let's make two new interactions effects variables and model it.
+
+```{r}
+model2 <- lm(data = Auto, mpg ~ cylinders*displacement + horsepower*weight)
+summary(model2)
+```
+
+As judged by the adjusted R2, this does reduce the power of `model2` as compared with `model`. But this is probably because these interactions effects were quite carelessly chosen.
+
+Ultimately, adding interaction terms to the model can greatly expand understanding of the relationships in the model and allows more hypotheses to be tested. 
+
+####Improving the model: Transforming variables
+
+Another way of attemping to improve the model is to transform the variables. Variables can be transformed in a variety of non-linear ways and still be accomodated by the `lm` function. Some of the more popular include log and quadratic transformations.
+
+Finally, let's look at the transformation of the variables. Let's build another model of the `Auto` data, one where the variable `year` is logged.
+
+```{r}
+model3 <- lm(data=Auto, mpg ~ cylinders + displacement + horsepower + log(year))
+summary(model3)
+```
+
+Interestingly, the log of the variable `year` seems to contribute much more to the model than if the variable was not logged. The near 0 p-value of this new variable suggests that it leads to an improved model. Some other examples of transformations are to square to cube variables.
+
+Note that there are rules around when to transform variables. 
+
+
+
+
+
+

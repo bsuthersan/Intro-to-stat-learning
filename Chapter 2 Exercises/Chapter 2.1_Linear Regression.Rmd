@@ -1,0 +1,67 @@
+---
+title: "Chapter 2"
+output: html_notebook
+---
+
+This is a simple regression analysis of the `mpg` and `horsepower` variables from the `Auto`.
+
+###Part 1
+
+We begin the analysis by plotting the two variables against each other, as shown below.
+
+```{r, echo=FALSE, dpi=600}
+library(ISLR)
+library(knitr)
+library(stats)
+library(tidyverse)
+ggplot(Auto, aes(mpg, horsepower)) +
+  geom_point(alpha=0.4, color="steelblue") +
+  geom_smooth(method="lm", color="steelblue") +
+  theme_minimal()
+```
+
+There certainly appears to be a linear relationship between these two variables. 
+
+```{r, echo=FALSE}
+model <- lm(mpg ~ horsepower, data = Auto)
+summary(model)
+```
+The coefficient estimate for the dependent variable `horsepower`, indicates that as the independent variable, `mpg`, increases, horsepower decreases by -0.157845 (though there is a standard error on this estimate of + or - 0.006446 units). As a general rule, the further the t-value from 0, the better.  
+
+Results show that there is a statistically significant relationship between `horsepower` and `mpg`, as indicated by the p value which is highly statistically significant at <2e-16. Basically, this means that the slope of the regression line is statistically significantly different from R. 
+
+We can then evaluate the model fit using two indicators, RSE and the R squared statistic.
+
+Roughly speaking, the RSE is the average amount that the response will deviate from the true regression line. In the case of this data, the actual value of `mpg` will differ from the regression line by 4.906 miles per gallon on average. This may or may not be an acceptable error rate; it depends on the context. It probably goes without saying that the lower the RSE, the better.
+
+The R-squared statistic is an indicator of the proportion of variability in Y than can be explained using X (a value always falling between 0 and 1.) In this case, the R-squared statistic is 0.6059, indicating that some 60.59% of the variability of `horsepower` can be explained by `mpg`, indicating a moderately good fit for the data.
+
+#Plots
+
+It is always useful to examine the diagnostic plots of a regression analysis.
+
+```{r}
+plot(model)
+```
+
+There are four plots produced here:
+
+- *Residuals versus fitted*: This plot shows if the residuals have non-linear patterns. For a good fit, we are looking for equally spread residuals around a horizonal line without distinct patterns. This apperas to be the case in the plot above. An ideal plot would have a perfectly flat red line.
+- *Normal QQ*: A QQ plot, or quantile-quantile plot, is a probability plot. Here, we are looking for an approximately linear relationship. In this case, there appears to be a 
+- The *scale-location* plot is similar to the residuals versus fitted values plot, but it takes the square root of the standardised residuals. 
+- The *cooks distance* plot is a statistic which tries to identify points that have more influence than other points. There are no hard and fast rules for interpreting Cook's distance, but influential values will be labeled in the plot, and might require further investigation.
+
+###Predicting values based on the results
+
+Next, we want to predict the value of `horsepower` at the point where `mpg` is equal to 98. 
+
+```{r}
+prediction <- predict(model, data.frame(horsepower=98), interval = "confidence")
+prediction
+```
+
+The result shows that the predicted value of `mpg` with `horsepower` set at 98 is `r prediction[1]`. The lower band is `r prediction[2]` and the upper band is `r prediction[3]`, indicating a standard error of `r abs(prediction[2] - prediction[1])`. 
+
+
+
+
