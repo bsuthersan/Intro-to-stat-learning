@@ -1,0 +1,10 @@
+---
+title: "Chapter2.4_InterceptOnly"
+output: html_notebook
+---
+
+```{r}
+plot(cars)
+```
+
+

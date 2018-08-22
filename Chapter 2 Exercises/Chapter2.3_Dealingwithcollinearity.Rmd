@@ -1,0 +1,61 @@
+---
+title: "Chapter2.3_Collinearity"
+output: html_notebook
+---
+
+In this exercise we will look at the issue of collinearity in multivariate regression.
+
+```{r}
+library(tidyverse)
+library(ISLR)
+set.seed(1)
+mydata <- data.frame(x1=runif(100),
+x2=0.5*x1+rnorm(100)/10,
+y=2+2*x1+0.3*x2+rnorm(100))
+```
+
+The correlation between x1 and x2 is high: `r cor(mydata$x1, mydata$x2)`. We can also see this with a simple scatterplot.
+
+```{r}
+ggplot(mydata, aes(x1, x2)) +
+  geom_point(color="steelblue", alpha=0.8) +
+  theme_minimal()
+```
+
+Now, we'll fit a least squares regression to predict `y` usig `x1` and `x2`.
+
+```{r}
+model <- lm(data = mydata, y ~ x1 + x2)
+summary(model)
+```
+
+The results show that `x1` seems to have a statistically signicant influence on `y`, but `x2` does not. Overall, the R2 indicates that this model is not a particularly 'good fit' for explaining `y`.
+
+However, if we run linear regressions separately, we can see that there is a relationship.
+
+```{r}
+model2 <- lm(data = mydata, y ~ x1)
+summary(model2)
+```
+
+```{r}
+model3 <- lm(data = mydata, y ~ x2)
+summary(model3)
+```
+
+The results obtained in each of these three regressions do contradict each other. 
+
+As the results above show, when multicollinearity exists, the following problems can be exacerbated:
+
+- The estimated regression of any one variable depeneds on which variables are included in the model;
+- The precision of the estimated regression coefficients decrease as more predictors are added to the model;
+- The marginal contribution of any one predictor variable in reducing the error sum of squares depends on which other predictors are already in the model;
+- Hypothesis tests may yield different conclusions depending on which predictors are in the model.
+
+There are a number of actions available to us to deal with collinearity:
+
+- Remove the correlated variables from the analysis;
+- Use partial least squares regression or principal components analysis to reduce the number of features;
+- Collect more data.
+
+
