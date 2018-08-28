@@ -1,0 +1,177 @@
+---
+title: "Chapter3_.1_Logistic Regression"
+output: html_notebook
+---
+
+This is an exercise sheet which goes through logistic regression.
+
+```{r}
+library(tidyverse)
+library(ISLR)
+library(MASS)
+library(class)
+```
+
+(a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+I'll start with a summary of the data.
+
+```{r}
+summary(Weekly)
+```
+
+Okay, great. Next thing is to construct a matrix of scatterplots.
+
+```{r}
+pairs(Weekly)
+```
+
+The only intersting pattern is what looks like a logarithmic pattern at the intersection of `volume` and `year`.
+
+(b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+```{r, echo=FALSE}
+model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data=Weekly, family="binomial")
+summary(model)
+```
+
+It looks like the only statistically significant variable is `Lag2`. Indeed, the `p value` for some of these variables is quite large, indicating almost no relationship. It is notable that `Lag2` is the only variable which is positively correlated with the response variable `Direction`. This means that as `Direction` increases, so too does `Lag2`.
+
+(c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+A confusion matrix is a specific table layout that allows visualisation of the performance of an algorithm. 
+
+The first thing to do is to create a new object, here called `glm.probs`, to apply predictions to `model`.
+
+```{r}
+glm.probs <- predict(model, type = "response")
+```
+
+Next, we create a new object called `glm.preds` which contains the predictions, dependings on the value of the probability (here, set at greater than 50%). Next, construct a table which tells you how well the model predicted the responses.
+
+```{r, echo=FALSE}
+glm.preds <- ifelse(glm.probs>.5, "Up", "Down")
+table(Weekly$Direction, glm.preds)
+```
+
+In this case, the model predicted correctly `r round((54+557)/(54+557+430+48)*100,1)`% of the time. This is only slightly better than random chance, so my interpretation is that we need to refine the model or use a different function.
+
+(d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+Begin by splitting into training (1990 to 2008) and test (2009 and 2010) sets.
+
+```{r}
+train <- Weekly %>% filter(Year <= 2008)
+test <- Weekly %>% filter(Year > 2008)
+```
+
+Now, run the logistic regression model on the training set.
+
+```{r}
+model2 <- glm(data = train, Direction ~ Lag2, family="binomial")
+summary(model2)
+```
+
+The model output indicates that there is a statistically significant relationship between `Lag2` and `Direction`. Again, however, we will use a prediction function to check the model accuracy. Note that we run the probabilities function on the test set, not the training set, and we assign it to 'newdata' within the function.
+
+```{r, echo=FALSE}
+glm.probs2 <- predict(model2, type="response", newdata = test)
+glm.preds2 <- ifelse(glm.probs2>.5, "Up","Down")
+table(glm.preds2, test$Direction)
+```
+
+The overall number of correct predictions produced by this model is `r round((9+56)/(5+34+9+56)*100,1)`%. 
+
+(e) Repeat (d) using LDA.
+
+```{r}
+model3 <- lda(Direction ~ Lag2, data = train)
+model3
+```
+
+The `group means` output is the average of each predictor in each class. Here, (given that `Lag2` is two days away from `Direction`, the group means show that there is a tendency for them to be Up by 0.26, 2 days after the market has been up, and down by 0.03, two days after the market has been Down.)
+
+As shown above, the `lda` analysis identified 44% of days when the `Direction` was down and 55% of days when the `Direction` was up. Next, we use the `lda.predict` function to predict lda values.
+
+```{r}
+lda.predict <- predict(model3, newdata = test)
+lda.class <- lda.predict$class
+table(lda.class, test$Direction)
+```
+
+The overall correct number of predictions produced by this model is `r round((9+56)/(9+56+5+34)*100, 1)`%
+
+(f) Repeat (d) using QDA.
+
+```{r}
+model4 <- qda(data = train, Direction ~ Lag2)
+model4
+```
+
+Note that there are no coefficients for the `qda` model, because the QDA classifier involves a quadratic, rather than linear, function.
+
+```{r}
+qda.predict <- predict(model4, newdata = test)
+table(qda.predict$class, test$Direction)
+```
+
+The accuracy of this model is `r round((0+61)/(9+57+4+34)*100,1)`%.
+
+(g) Repeat (d) using KNN with K =1.
+
+```{r}
+train <- train %>%
+  dplyr::select(Lag2, Direction)
+
+knn.pred = knn(train=data.frame(train$Lag2), test=data.frame(test$Lag2), cl=train$Direction, k=1)
+cm.g <- table(test$Direction, knn.pred)
+cm.g
+```
+
+The accuracy of the knn model is `r round((21+32)/(21+22+29+32)*100, 1)`%
+
+(h) Which of these methods appears to provide the best results on this data?
+
+The best models are the logistic regression and the LDA, both at 62.5%
+
+(i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
+
+I'll just do the knn classifier for now. To do this, I'm going to steal some code from the internet.
+
+```{r}
+##First, I'll set the training and and test data
+train <- Weekly %>% dplyr::filter(Year <= 2008)
+test <- Weekly %>% dplyr::filter(Year > 2008)
+
+results <- data.frame(k=1:50, acc=NA)
+for(i in 1:50){
+  knn.pred = knn(train=data.frame(train$Lag2), test=data.frame(test$Lag2), cl=train$Direction, k=i)
+  cm <- table(test$Direction, knn.pred)
+  acc <- (cm["Down", "Down"] + cm["Up", "Up"])/sum(cm)
+  results$acc[i] <- acc
+}
+```
+
+Once that function has run, I can now graph it to look how the model has been fit.
+
+```{r, warning=FALSE, message=FALSE}
+ggplot(results, aes(k, acc)) +
+  geom_line() + 
+  ylim(0:1) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE}
+results %>%
+  arrange(desc(acc))         
+```
+As can be seen in the graph above, there doesn't appear to be too much gain in accuracy of the model depending on the k value. The highest value is 4, with 63% accuracy.
+
+
+
+
+
+
+
+
+

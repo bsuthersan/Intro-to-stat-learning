@@ -1,0 +1,121 @@
+---
+title: "3.3. Classification"
+output: html_notebook
+---
+
+(a) Using the Boston data set, fit classification models in order to predict whether a given suburb has a crime rate above or below the median. Explore logistic regression, LDA, and KNN models using various sub- sets of the predictors. Describe your findings.
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(ISLR)
+```
+
+Okay, let's begin by summarising `Boston`.
+
+```{r}
+summary(Boston)
+```
+
+Okay, everything is numeric. Let's look at the correlations between variables next, particularly crime.
+
+```{r}
+pairs(Boston)
+```
+
+Okay, so there is not really any key relationships there. Let's now look at a correlation matrix instead.
+
+```{r}
+cor(Boston) %>%
+  knitr::kable()
+```
+
+The strongest associations with `crim` seem to be `rad`, `nox`, and `tax`.
+
+Let's create the median value.
+
+```{r}
+Boston$medcrime <- ifelse(Boston$crim>median(Boston$crim), 1, 0)
+```
+
+And now create the training and test sets.
+
+```{r}
+n <- nrow(Boston)
+shuffled_df <- Boston[sample(n), ]
+train_indices <- 1:round(0.7 * n)
+train <- shuffled_df[train_indices, ]
+test_indices <- (round(0.7 * n) + 1):n
+test <- shuffled_df[test_indices, ]
+```
+
+Now, given that we haven't really found any really strong relationships, let's run a logistic regression on the entire dataset first.
+
+```{r}
+model <- glm(data = train, medcrime ~ . -crim, family="binomial")
+summary(model)
+```
+
+The results show that the following variables appear to be associated with being above or below the median crime rate: `nox`, `tax`, `rad`, `ptratio`, `black` and `medv`. But first, let's check the fit against the training data.
+
+```{r}
+glm.probs <- predict(model, type="response", newdata = test)
+glm.preds <- ifelse(glm.probs>0.5, 1,0)
+table(glm.preds, test$medcrime)
+```
+
+Okay, so the model is accurate to `r (73+63)/(73+63+8+11)`, which is not bad. But to refine, we might want to remove some of the variables which do not appear to be associated with accuracy.
+
+```{r}
+model2 <- glm(data = train, medcrime ~ nox + dis + rad + tax + ptratio, family="binomial")
+summary(model)
+```
+
+```{r}
+glm.probs <- predict(model2, type="response", newdata = test)
+glm.preds <- ifelse(glm.probs>0.5, 1,0)
+table(glm.preds, test$medcrime)
+```
+
+The accuracy of this model is `r (70+59)/(70+59+9+14)` - so not as good as the other model. But still - not too bad. Let's now try an LDA model, using just those features.
+
+```{r}
+ldamodel <- lda(data = train, medcrime ~ nox + dis + rad + tax + ptratio)
+ldapredict <- predict(ldamodel, newdata = test)
+lda.class <- ldapredict$class
+table(lda.class, test$medcrime)
+```
+
+The accuracy of the LDA model is `r (72+46)/(72+46+22+12)` - not as good as the other models.
+
+Let's try a qda now.
+
+```{r}
+qdamodel <- qda(data = train, medcrime ~ nox + dis + rad + tax + ptratio)
+qdapredict <- predict(qdamodel, newdata = test)
+qda.class <- qdapredict$class
+table(qda.class, test$medcrime)
+```
+
+The result is `r (79+48)/(79+20+5+48)` - pretty close to the logistic regression.
+
+Finally, let's try a knn model. Remember that before we do this, we have to standardise the features.
+
+```{r}
+train <- train %>%
+  mutate_at(vars(-medcrime), function(x) scale(x)) %>%
+  dplyr::select(medcrime, nox, dis, rad, tax, ptratio)
+test <- test %>%
+  mutate_at(vars(-medcrime), function(x) scale(x)) %>%
+  dplyr::select(medcrime, nox, dis, rad, tax, ptratio)
+```
+
+And now run the test.
+
+```{r}
+knn.pred <- knn(train, test, cl=train$medcrime, k=1)
+table(knn.pred, test$medcrime)
+```
+
+The knn test has 100% accuracy rate... :S
+
