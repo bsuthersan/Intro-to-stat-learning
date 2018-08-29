@@ -1,0 +1,93 @@
+---
+title: "Chapter5.1_Cross_Validation"
+output: html_notebook
+---
+
+```{r, echo=FALSE, message = FALSE}
+library(tidyverse)
+library(ISLR)
+```
+
+(a) Fit a logistic regression model that uses income and balance to
+predict default.
+
+```{r}
+model <- glm(data = Default, default ~ balance + income, family = 'binomial')
+```
+
+(b) Using the validation set approach, estimate the test error of this
+model.
+
+i. Split the sample set into a training set and a validation set.
+
+```{r}
+smp_size <- floor(0.7 * nrow(Default))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(Default)), size = smp_size)
+train <- Default[train_ind, ]
+test <- Default[-train_ind, ]
+```
+
+ii. Fit a multiple logistic regression model using only the training
+observations. In order to do this, you must perform the following steps:
+iii. Obtain a prediction of default status for each individual in
+the validation set by computing the posterior probability of
+default for that individual, and classifying the individual to
+the default category if the posterior probability is greater
+than 0.5.
+
+```{r, echo=FALSE}
+model <- glm(data = train, default ~ balance + income, family = "binomial")
+probs <- predict(model, newdata = test, type = "response")
+pred.glm <- rep("No", length(probs))
+pred.glm[probs > 0.5] <- "Yes"
+table(pred.glm, test$default)
+```
+
+iv. Compute the validation set error, which is the fraction of
+the observations in the validation set that are misclassified.
+
+```{r}
+mean(pred.glm != test$default)
+```
+
+(c) Repeat the process in (b) three times, using three different splits of the observations into a training set and a validation set. Comment on the results obtained.
+
+```{r}
+new <- c(4009, 271, 680182)
+
+for (i in new) {
+smp_size <- floor(0.7 * nrow(Default))
+set.seed(i)
+train_ind <- sample(seq_len(nrow(Default)), size = smp_size)
+train <- Default[train_ind, ]
+test <- Default[-train_ind, ]
+model <- glm(data = train, default ~ balance + income, family = "binomial")
+probs <- predict(model, newdata = test, type = "response")
+pred.glm <- rep("No", length(probs))
+pred.glm[probs > 0.5] <- "Yes"
+print(mean(pred.glm != test$default)) }
+```
+
+(d) Now consider a logistic regression model that predicts the probability of default using income, balance, and a dummy variable
+for student. Estimate the test error for this model using the validation
+set approach. Comment on whether or not including a dummy variable for student leads to a reduction in the test error rate.
+
+```{r}
+Default$student <- as.character(Default$student)
+Default$student[Default$student=="Yes"] <- "1"
+Default$student[Default$student=="No"] <- "0"
+Default$student <- as.factor(Default$student)
+smp_size <- floor(0.7 * nrow(Default))
+set.seed(72917)
+train_ind <- sample(seq_len(nrow(Default)), size = smp_size)
+train <- Default[train_ind, ]
+test <- Default[-train_ind, ]
+model <- glm(data = train, default ~ balance + income + student, family = "binomial")
+probs <- predict(model, newdata = test, type = "response")
+pred.glm <- rep("No", length(probs))
+pred.glm[probs > 0.5] <- "Yes"
+print(mean(pred.glm != test$default))
+```
+
+Resukts - it doesn't seem to make a huge difference whether or not the student variable is included!
